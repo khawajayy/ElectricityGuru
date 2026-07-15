@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricity Guru</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171c23; --panel2:#1e242d; --line:#2a323d;
+    --text:#e7ecf2; --muted:#93a1b1; --accent:#4ea1ff; --accent2:#ffd166;
+    --good:#39d98a; --warn:#ff6b6b; --radius:14px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f4f6f9; --panel:#ffffff; --panel2:#f0f3f7; --line:#e2e8f0;
+      --text:#1a2230; --muted:#5b6675; --accent:#2563eb; --accent2:#c98a00;
+      --good:#0ea968; --warn:#e03e3e;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+  header{padding:22px 20px 6px;max-width:1100px;margin:0 auto}
+  h1{margin:0;font-size:26px;letter-spacing:-.5px}
+  h1 .bolt{color:var(--accent2)}
+  .sub{color:var(--muted);font-size:14px;margin-top:2px}
+  main{max-width:1100px;margin:0 auto;padding:12px 20px 60px}
+  .grid{display:grid;gap:16px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+  .two{grid-template-columns:1.2fr .8fr}
+  @media(max-width:820px){.two{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 12px}
+  .stat .val{font-size:26px;font-weight:700;letter-spacing:-.5px}
+  .stat .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .stat .sub2{font-size:12px;color:var(--muted);margin-top:3px}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.5px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:9px;padding:10px 11px;font-size:15px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:120px}
+  button{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:11px 16px;
+    font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:500}
+  button.tiny{padding:5px 9px;font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;background:var(--panel2);color:var(--muted)}
+  .pill.on{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
+  .pill.off{background:color-mix(in srgb,var(--muted) 18%,transparent)}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:26px 10px}
+  canvas{width:100%;height:auto;display:block}
+  .tabs{display:flex;gap:6px;margin:18px 0 4px;flex-wrap:wrap}
+  .tabs button{background:var(--panel);border:1px solid var(--line);color:var(--muted);font-weight:500}
+  .tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .bar-row .name{width:130px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{flex:1;background:var(--panel2);border-radius:6px;height:16px;overflow:hidden}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px}
+  .bar-row .kwh{width:90px;flex:none;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .del{color:var(--warn);cursor:pointer;background:none;border:none;font-size:16px;padding:2px 6px}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .authbar{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;flex-wrap:wrap}
+  .steps{font-size:13.5px;color:var(--text)}
+  .steps li{margin:6px 0}
+  .steps code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12.5px}
+  .notice{font-size:13px;padding:10px 12px;border-radius:9px;margin-top:10px}
+  .notice.ok{background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good)}
+  .notice.err{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn)}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px;overflow:auto;font-size:12px;line-height:1.45}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="bolt">⚡</span> Electricity Guru</h1>
+  <div class="sub">Track your meter readings, spot usage trends, and see which appliances cost you the most.</div>
+  <div class="authbar" id="authbar"></div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="readings">Readings</button>
+    <button data-tab="appliances">Appliances</button>
+    <button data-tab="settings">Settings &amp; Sync</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <section id="tab-dashboard">
+    <div class="card" style="margin-bottom:16px">
+      <h2>Log a meter reading</h2>
+      <div class="row">
+        <div>
+          <label>Current meter reading (units / kWh)</label>
+          <input id="r-value" type="number" step="any" placeholder="e.g. 14520.5" inputmode="decimal">
+        </div>
+        <div>
+          <label>Date &amp; time</label>
+          <input id="r-time" type="datetime-local">
+        </div>
+        <div style="flex:none;display:flex;align-items:flex-end">
+          <button id="r-add">Add reading</button>
+        </div>
+      </div>
+      <div class="hint">Timestamp defaults to now (your local time). Adjust it if you're logging a past reading.</div>
+    </div>
+
+    <div class="grid cards" id="stats" style="margin-bottom:16px"></div>
+
+    <div class="grid two">
+      <div class="card">
+        <div class="flex-between"><h2>Daily consumption</h2><span class="pill" id="chart-range"></span></div>
+        <canvas id="barChart" width="700" height="300"></canvas>
+      </div>
+      <div class="card">
+        <h2>Cumulative meter reading</h2>
+        <canvas id="lineChart" width="500" height="300"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- READINGS -->
+  <section id="tab-readings" style="display:none">
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:12px">
+        <h2 style="margin:0">All readings</h2>
+        <div class="row" style="flex:none">
+          <button class="ghost tiny" id="export">Export JSON</button>
+          <button class="ghost tiny" id="import-btn">Import</button>
+          <input id="import-file" type="file" accept="application/json" style="display:none">
+        </div>
+      </div>
+      <div id="readings-table"></div>
+    </div>
+  </section>
+
+  <!-- APPLIANCES -->
+  <section id="tab-appliances" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <h2>Add an appliance</h2>
+      <div class="row">
+        <div><label>Name</label><input id="a-name" placeholder="e.g. Air Conditioner"></div>
+        <div><label>Power (watts)</label><input id="a-watts" type="number" step="any" placeholder="1500" inputmode="decimal"></div>
+        <div><label>Quantity</label><input id="a-qty" type="number" step="1" value="1" inputmode="numeric"></div>
+        <div><label>Hours / day</label><input id="a-hours" type="number" step="any" placeholder="8" inputmode="decimal"></div>
+        <div style="flex:none;display:flex;align-items:flex-end"><button id="a-add">Add</button></div>
+      </div>
+      <div class="hint">Estimated usage = watts × quantity × hours/day. Helps you see the biggest energy consumers.</div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>Your appliances</h2>
+        <div id="appliance-table"></div>
+      </div>
+      <div class="card">
+        <h2>Estimated daily share</h2>
+        <div id="appliance-bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" style="display:none">
+    <div class="grid two">
+      <div class="card">
+        <h2>Cloud sync (Supabase)</h2>
+        <p class="sub" style="margin-top:0">Connect a free Supabase project so your PC and phone share the same data. Your keys are stored only in this browser.</p>
+        <div style="margin-bottom:10px">
+          <label>Supabase Project URL</label>
+          <input id="cfg-url" placeholder="https://xxxxxxxx.supabase.co">
+        </div>
+        <div style="margin-bottom:10px">
+          <label>Supabase anon public key</label>
+          <input id="cfg-key" placeholder="eyJhbGciOi...">
+        </div>
+        <div class="row">
+          <button id="cfg-save">Save connection</button>
+          <button class="ghost" id="cfg-clear">Disconnect</button>
+        </div>
+        <div id="cfg-status"></div>
+
+        <div id="auth-box" style="margin-top:18px;display:none">
+          <h2>Sign in</h2>
+          <div class="row">
+            <div style="flex:1"><label>Your email</label><input id="auth-email" type="email" placeholder="you@example.com"></div>
+            <div style="flex:none;display:flex;align-items:flex-end"><button id="auth-send">Email me a login link</button></div>
+          </div>
+          <div class="hint">We'll email you a one-time link. Click it on any device to sign in. No password needed.</div>
+          <div id="auth-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>First-time setup</h2>
+        <ol class="steps">
+          <li>Create a free account at <b>supabase.com</b> → New project (any name, pick a region near you, set a database password you keep).</li>
+          <li>In the project: open <b>SQL Editor</b>, paste the script below, click <b>Run</b>. This creates your tables and locks them to your account.</li>
+          <li>Open <b>Project Settings → API</b>. Copy the <b>Project URL</b> and the <b>anon public</b> key into the boxes on the left, then <b>Save connection</b>.</li>
+          <li>Open <b>Authentication → URL Configuration</b>. Set <b>Site URL</b> and add a <b>Redirect URL</b> both to your app address:
+            <br><code id="app-url"></code></li>
+          <li>Back here, enter your email and click the login link we send. Done, your data now syncs everywhere.</li>
+        </ol>
+        <details style="margin-top:8px">
+          <summary style="cursor:pointer;color:var(--accent)">Show SQL setup script</summary>
+<pre id="sql-block">create table readings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users,
+  v double precision not null,
+  t bigint not null,
+  created_at timestamptz default now()
+);
+create table appliances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users,
+  name text not null,
+  watts double precision not null,
+  qty integer not null default 1,
+  hours double precision not null
+);
+alter table readings enable row level security;
+alter table appliances enable row level security;
+create policy "own_readings" on readings
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own_appliances" on appliances
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);</pre>
+          <button class="ghost tiny" id="copy-sql">Copy SQL</button>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</main>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const $ = s => document.querySelector(s);
+
+// ---------- config / clients ----------
+const CFG_KEY='eguru.config';
+const getConfig=()=>{ try{return JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){return {}} };
+const setConfig=c=>localStorage.setItem(CFG_KEY,JSON.stringify(c));
+const appUrl=()=> location.origin==='null'? location.href.split('#')[0].split('?')[0]
+                                          : location.origin+location.pathname;
+
+let sb=null, user=null;
+let state={readings:[], appliances:[]};
+const cloudActive=()=> !!(sb && user);
+
+// ---------- local fallback store ----------
+const local={
+  readings(){ try{return JSON.parse(localStorage.getItem('eguru.readings'))||[]}catch(e){return []} },
+  saveReadings(r){ localStorage.setItem('eguru.readings',JSON.stringify(r)); },
+  appliances(){ try{return JSON.parse(localStorage.getItem('eguru.appliances'))||[]}catch(e){return []} },
+  saveAppliances(a){ localStorage.setItem('eguru.appliances',JSON.stringify(a)); },
+};
+const uid=()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+// ---------- data layer ----------
+async function loadState(){
+  if(cloudActive()){
+    try{
+      const [rd,ap]=await Promise.all([
+        sb.from('readings').select('*'),
+        sb.from('appliances').select('*'),
+      ]);
+      if(rd.error||ap.error) throw (rd.error||ap.error);
+      state.readings=(rd.data||[]).map(x=>({id:x.id,v:Number(x.v),t:Number(x.t)}));
+      state.appliances=(ap.data||[]).map(x=>({id:x.id,name:x.name,watts:Number(x.watts),qty:Number(x.qty),hours:Number(x.hours)}));
+      return;
+    }catch(e){ console.warn('cloud load failed, using local cache',e); }
+  }
+  state.readings=local.readings();
+  state.appliances=local.appliances();
+}
+async function addReading(v,t){
+  if(cloudActive()){ const {error}=await sb.from('readings').insert({v,t}); if(error){alert('Save failed: '+error.message);return;} }
+  else { const r=local.readings(); r.push({id:uid(),v,t}); local.saveReadings(r); }
+  await loadState(); refresh();
+}
+async function delReading(id){
+  if(cloudActive()){ await sb.from('readings').delete().eq('id',id); }
+  else { local.saveReadings(local.readings().filter(x=>x.id!==id)); }
+  await loadState(); refresh();
+}
+async function addAppliance(o){
+  if(cloudActive()){ const {error}=await sb.from('appliances').insert(o); if(error){alert('Save failed: '+error.message);return;} }
+  else { const a=local.appliances(); a.push({id:uid(),...o}); local.saveAppliances(a); }
+  await loadState(); renderAppliances();
+}
+async function delAppliance(id){
+  if(cloudActive()){ await sb.from('appliances').delete().eq('id',id); }
+  else { local.saveAppliances(local.appliances().filter(x=>x.id!==id)); }
+  await loadState(); renderAppliances();
+}
+
+// ---------- helpers ----------
+const fmt = n => (Math.round(n*100)/100).toLocaleString(undefined,{maximumFractionDigits:2});
+const localDatetimeValue = d => {
+  const p = x => String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const dayKey = ts => { const d=new Date(ts); const p=x=>String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+const dayLabel = key => { const [y,m,dd]=key.split('-');
+  return new Date(y,m-1,dd).toLocaleDateString(undefined,{month:'short',day:'numeric'}); };
+
+function computed(){
+  const r = state.readings.slice().sort((a,b)=>a.t-b.t);
+  const intervals=[];
+  for(let i=1;i<r.length;i++){
+    intervals.push({from:r[i-1],to:r[i],used:r[i].v-r[i-1].v,ms:r[i].t-r[i-1].t});
+  }
+  return {r,intervals};
+}
+function dailyUsage(intervals){
+  const map={};
+  intervals.forEach(iv=>{
+    if(iv.used<0) return;
+    let start=iv.from.t,end=iv.to.t;
+    if(end<=start){ map[dayKey(start)]=(map[dayKey(start)]||0)+iv.used; return; }
+    const total=end-start; let cur=start;
+    while(cur<end){
+      const d=new Date(cur); d.setHours(24,0,0,0);
+      const segEnd=Math.min(d.getTime(),end);
+      map[dayKey(cur)]=(map[dayKey(cur)]||0)+iv.used*(segEnd-cur)/total;
+      cur=segEnd;
+    }
+  });
+  return Object.keys(map).sort().map(k=>({day:k,used:map[k]}));
+}
+
+// ---------- rendering ----------
+function renderStats(){
+  const {r,intervals}=computed(); const el=$('#stats');
+  if(r.length<2){
+    el.innerHTML=`<div class="card stat"><div class="lbl">Readings logged</div><div class="val">${r.length}</div>
+      <div class="sub2">Add at least 2 readings to see usage.</div></div>`; return;
+  }
+  const daily=dailyUsage(intervals);
+  const now=new Date(); const monthStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const monthUsed=daily.filter(d=>{const[y,m,dd]=d.day.split('-');return new Date(y,m-1,dd)>=monthStart;}).reduce((s,d)=>s+d.used,0);
+  const totalUsed=intervals.filter(i=>i.used>=0).reduce((s,i)=>s+i.used,0);
+  const totalMs=r[r.length-1].t-r[0].t;
+  const perDay=totalMs>0?totalUsed/(totalMs/86400000):0;
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const projected=perDay*daysInMonth;
+  const peak=daily.slice().sort((a,b)=>b.used-a.used)[0];
+  const last=r[r.length-1];
+  el.innerHTML=[
+    ['This month',fmt(monthUsed)+' kWh','since '+new Date(monthStart).toLocaleDateString(undefined,{month:'short',day:'numeric'})],
+    ['Avg per day',fmt(perDay)+' kWh','across '+fmt(totalMs/86400000)+' days'],
+    ['Projected month',fmt(projected)+' kWh','at current pace'],
+    ['Peak day',peak?fmt(peak.used)+' kWh':'—',peak?dayLabel(peak.day):''],
+    ['Last reading',fmt(last.v),new Date(last.t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})],
+  ].map(([lbl,val,sub])=>`<div class="card stat"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub2">${sub}</div></div>`).join('');
+}
+function drawBar(){
+  const {intervals}=computed(); const daily=dailyUsage(intervals).slice(-30);
+  const c=$('#barChart'),ctx=c.getContext('2d'); const W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
+  const cs=getComputedStyle(document.documentElement);
+  const acc=cs.getPropertyValue('--accent').trim(),acc2=cs.getPropertyValue('--accent2').trim();
+  const muted=cs.getPropertyValue('--muted').trim(),line=cs.getPropertyValue('--line').trim();
+  $('#chart-range').textContent=daily.length?`last ${daily.length} days`:'';
+  if(!daily.length){ctx.fillStyle=muted;ctx.font='14px system-ui';ctx.textAlign='center';ctx.fillText('No usage data yet',W/2,H/2);return;}
+  const pad={l:44,r:12,t:14,b:34}; const max=Math.max(...daily.map(d=>d.used),1);
+  const plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+  ctx.strokeStyle=line;ctx.fillStyle=muted;ctx.font='11px system-ui';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const y=pad.t+plotH*i/4;const val=max*(1-i/4);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillText(fmt(val),pad.l-6,y+4);}
+  const bw=plotW/daily.length;
+  daily.forEach((d,i)=>{const h=plotH*(d.used/max);const x=pad.l+i*bw;const y=pad.t+plotH-h;
+    const g=ctx.createLinearGradient(0,y,0,pad.t+plotH);g.addColorStop(0,acc2);g.addColorStop(1,acc);
+    ctx.fillStyle=g;ctx.fillRect(x+bw*0.15,y,bw*0.7,h);});
+  ctx.fillStyle=muted;ctx.font='10px system-ui';ctx.textAlign='center';
+  const step=Math.ceil(daily.length/8);
+  daily.forEach((d,i)=>{if(i%step===0)ctx.fillText(dayLabel(d.day),pad.l+i*bw+bw/2,H-12);});
+}
+function drawLine(){
+  const {r}=computed(); const c=$('#lineChart'),ctx=c.getContext('2d'); const W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
+  const cs=getComputedStyle(document.documentElement);
+  const acc=cs.getPropertyValue('--accent').trim(),muted=cs.getPropertyValue('--muted').trim(),line=cs.getPropertyValue('--line').trim();
+  if(r.length<2){ctx.fillStyle=muted;ctx.font='14px system-ui';ctx.textAlign='center';ctx.fillText('Add more readings',W/2,H/2);return;}
+  const pad={l:52,r:12,t:14,b:34}; const xs=r.map(p=>p.t),ys=r.map(p=>p.v);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+  const X=t=>pad.l+(maxX===minX?0:(t-minX)/(maxX-minX))*plotW;
+  const Y=v=>pad.t+plotH-(maxY===minY?0.5:(v-minY)/(maxY-minY))*plotH;
+  ctx.strokeStyle=line;ctx.fillStyle=muted;ctx.font='11px system-ui';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const y=pad.t+plotH*i/4;const val=maxY-(maxY-minY)*i/4;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillText(fmt(val),pad.l-6,y+4);}
+  ctx.beginPath();ctx.moveTo(X(xs[0]),Y(ys[0]));r.forEach(p=>ctx.lineTo(X(p.t),Y(p.v)));
+  ctx.lineTo(X(xs[xs.length-1]),pad.t+plotH);ctx.lineTo(X(xs[0]),pad.t+plotH);ctx.closePath();
+  ctx.fillStyle=acc+'22';ctx.fill();
+  ctx.beginPath();ctx.moveTo(X(xs[0]),Y(ys[0]));r.forEach(p=>ctx.lineTo(X(p.t),Y(p.v)));
+  ctx.strokeStyle=acc;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=acc;r.forEach(p=>{ctx.beginPath();ctx.arc(X(p.t),Y(p.v),3,0,7);ctx.fill();});
+  ctx.fillStyle=muted;ctx.font='10px system-ui';
+  [xs[0],xs[xs.length-1]].forEach((t,i)=>{ctx.textAlign=i?'right':'left';
+    ctx.fillText(new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'}),i?W-pad.r:pad.l,H-12);});
+}
+function renderReadings(){
+  const {r,intervals}=computed(); const el=$('#readings-table');
+  if(!r.length){el.innerHTML='<div class="empty">No readings yet. Log one from the Dashboard.</div>';return;}
+  const usedByTo={}; intervals.forEach(iv=>usedByTo[iv.to.id]=iv);
+  const rows=r.slice().reverse().map(p=>{
+    const iv=usedByTo[p.id]; let used='—',rate='';
+    if(iv){used=(iv.used<0?'reset ':'')+fmt(iv.used)+' kWh';const days=iv.ms/86400000;rate=days>0?fmt(iv.used/days)+'/day':'';}
+    return `<tr><td>${new Date(p.t).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="num">${fmt(p.v)}</td><td class="num">${used}</td><td class="num">${rate}</td>
+      <td class="num"><button class="del" data-del="${p.id}" title="Delete">✕</button></td></tr>`;
+  }).join('');
+  el.innerHTML=`<table><thead><tr><th>When</th><th class="num">Reading</th><th class="num">Used since prev</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReading(b.dataset.del));
+}
+function renderAppliances(){
+  const a=state.appliances; const tbl=$('#appliance-table'),bars=$('#appliance-bars');
+  if(!a.length){tbl.innerHTML='<div class="empty">No appliances added yet.</div>';bars.innerHTML='';return;}
+  const withKwh=a.map(x=>({...x,kwh:(x.watts*x.qty*x.hours)/1000})).sort((p,q)=>q.kwh-p.kwh);
+  const total=withKwh.reduce((s,x)=>s+x.kwh,0)||1;
+  tbl.innerHTML=`<table><thead><tr><th>Appliance</th><th class="num">W</th><th class="num">Qty</th><th class="num">h/day</th><th class="num">kWh/day</th><th></th></tr></thead><tbody>${
+    withKwh.map(x=>`<tr><td>${x.name}</td><td class="num">${fmt(x.watts)}</td><td class="num">${x.qty}</td><td class="num">${fmt(x.hours)}</td><td class="num">${fmt(x.kwh)}</td>
+      <td class="num"><button class="del" data-del="${x.id}">✕</button></td></tr>`).join('')
+  }<tr><td><strong>Total</strong></td><td></td><td></td><td></td><td class="num"><strong>${fmt(total)}</strong></td><td></td></tr></tbody></table>`;
+  bars.innerHTML=withKwh.map(x=>`<div class="bar-row"><div class="name" title="${x.name}">${x.name}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${(x.kwh/withKwh[0].kwh*100).toFixed(1)}%"></div></div>
+    <div class="kwh">${(x.kwh/total*100).toFixed(0)}% · ${fmt(x.kwh)}</div></div>`).join('')
+    +`<div class="hint">Estimated ${fmt(total)} kWh/day = ${fmt(total*30)} kWh/month if run daily.</div>`;
+  tbl.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delAppliance(b.dataset.del));
+}
+function refresh(){ renderStats(); drawBar(); drawLine(); renderReadings(); }
+
+// ---------- auth / connection ----------
+function renderAuthbar(){
+  const el=$('#authbar'); const cfg=getConfig();
+  if(!cfg.url||!cfg.key){ el.innerHTML='<span class="pill off">Local only</span><span class="sub">Not synced — set up cloud sync in Settings.</span>'; return; }
+  if(user){ el.innerHTML=`<span class="pill on">● Synced</span><span class="sub">${user.email}</span>
+    <button class="ghost tiny" id="signout">Sign out</button>`;
+    $('#signout').onclick=async()=>{ await sb.auth.signOut(); }; }
+  else { el.innerHTML='<span class="pill off">Connected, not signed in</span><span class="sub">Sign in from Settings to sync.</span>'; }
+}
+async function initClient(){
+  const cfg=getConfig();
+  $('#cfg-url').value=cfg.url||''; $('#cfg-key').value=cfg.key||'';
+  sb=null; user=null;
+  if(cfg.url&&cfg.key){
+    try{
+      sb=createClient(cfg.url,cfg.key);
+      const {data:{session}}=await sb.auth.getSession();
+      user=session?.user||null;
+      sb.auth.onAuthStateChange(async(_e,s)=>{ user=s?.user||null; renderAuthbar(); await onAuthChanged(); });
+      $('#auth-box').style.display='';
+    }catch(e){ $('#cfg-status').innerHTML=`<div class="notice err">Could not connect: ${e.message}</div>`; }
+  } else { $('#auth-box').style.display='none'; }
+  renderAuthbar();
+}
+let migrated=false;
+async function onAuthChanged(){
+  if(cloudActive() && !migrated){
+    migrated=true;
+    const lr=local.readings(), la=local.appliances();
+    if(lr.length||la.length){
+      const {count}=await sb.from('readings').select('*',{count:'exact',head:true});
+      if(!count && confirm(`Upload your ${lr.length} local reading(s) and ${la.length} appliance(s) to your cloud account? Your local copy stays as a backup.`)){
+        if(lr.length) await sb.from('readings').insert(lr.map(({v,t})=>({v,t})));
+        if(la.length) await sb.from('appliances').insert(la.map(({name,watts,qty,hours})=>({name,watts,qty,hours})));
+      }
+    }
+  }
+  await loadState(); refresh(); renderAppliances(); renderFoot();
+}
+function renderFoot(){
+  $('#foot').textContent = cloudActive()
+    ? 'Synced to your Supabase account. Same data on every device you sign in on.'
+    : 'Data is saved only in this browser. Set up cloud sync in Settings to use it on your phone too.';
+}
+
+// ---------- events ----------
+$('#r-time').value=localDatetimeValue(new Date());
+$('#r-add').onclick=()=>{
+  const v=parseFloat($('#r-value').value);
+  const t=$('#r-time').value?new Date($('#r-time').value).getTime():Date.now();
+  if(isNaN(v)){$('#r-value').focus();return;}
+  addReading(v,t);
+  $('#r-value').value=''; $('#r-time').value=localDatetimeValue(new Date());
+};
+$('#r-value').addEventListener('keydown',e=>{if(e.key==='Enter')$('#r-add').click();});
+
+$('#a-add').onclick=()=>{
+  const name=$('#a-name').value.trim();
+  const watts=parseFloat($('#a-watts').value);
+  const qty=parseInt($('#a-qty').value)||1;
+  const hours=parseFloat($('#a-hours').value);
+  if(!name||isNaN(watts)||isNaN(hours))return;
+  addAppliance({name,watts,qty,hours});
+  $('#a-name').value='';$('#a-watts').value='';$('#a-qty').value='1';$('#a-hours').value='';
+};
+
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  ['dashboard','readings','appliances','settings'].forEach(t=>$('#tab-'+t).style.display=t===b.dataset.tab?'':'none');
+  if(b.dataset.tab==='dashboard'){drawBar();drawLine();}
+  if(b.dataset.tab==='appliances')renderAppliances();
+});
+
+$('#export').onclick=()=>{
+  const data={readings:state.readings,appliances:state.appliances,exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='electricity-guru-backup.json';a.click();
+};
+$('#import-btn').onclick=()=>$('#import-file').click();
+$('#import-file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return; const rd=new FileReader();
+  rd.onload=async()=>{ try{ const d=JSON.parse(rd.result);
+    if(cloudActive()){
+      if(Array.isArray(d.readings)&&d.readings.length) await sb.from('readings').insert(d.readings.map(({v,t})=>({v,t})));
+      if(Array.isArray(d.appliances)&&d.appliances.length) await sb.from('appliances').insert(d.appliances.map(({name,watts,qty,hours})=>({name,watts,qty,hours})));
+    } else {
+      if(Array.isArray(d.readings)) local.saveReadings(d.readings);
+      if(Array.isArray(d.appliances)) local.saveAppliances(d.appliances);
+    }
+    await loadState(); refresh(); renderAppliances(); alert('Imported successfully.');
+  }catch(err){alert('Could not read that file.');} };
+  rd.readAsText(f);
+};
+
+$('#cfg-save').onclick=async()=>{
+  const url=$('#cfg-url').value.trim().replace(/\/+$/,''); const key=$('#cfg-key').value.trim();
+  if(!url||!key){$('#cfg-status').innerHTML='<div class="notice err">Enter both the URL and the anon key.</div>';return;}
+  setConfig({url,key}); migrated=false;
+  await initClient(); await onAuthChanged();
+  $('#cfg-status').innerHTML='<div class="notice ok">Saved. Now sign in with your email below.</div>';
+};
+$('#cfg-clear').onclick=async()=>{
+  localStorage.removeItem(CFG_KEY); migrated=false;
+  await initClient(); await onAuthChanged();
+  $('#cfg-status').innerHTML='<div class="notice ok">Disconnected. Using local storage on this device only.</div>';
+};
+$('#auth-send').onclick=async()=>{
+  if(!sb){$('#auth-status').innerHTML='<div class="notice err">Save your connection first.</div>';return;}
+  const email=$('#auth-email').value.trim();
+  if(!email){$('#auth-status').innerHTML='<div class="notice err">Enter your email.</div>';return;}
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:appUrl()}});
+  $('#auth-status').innerHTML = error
+    ? `<div class="notice err">${error.message}</div>`
+    : '<div class="notice ok">Check your email and click the login link. You can open it on this device or your phone.</div>';
+};
+$('#copy-sql').onclick=()=>{ navigator.clipboard.writeText($('#sql-block').textContent).then(()=>{$('#copy-sql').textContent='Copied!';setTimeout(()=>$('#copy-sql').textContent='Copy SQL',1500);}); };
+
+window.addEventListener('resize',()=>{drawBar();drawLine();});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',refresh);
+
+// ---------- boot ----------
+$('#app-url').textContent=appUrl();
+await initClient();
+await onAuthChanged();
+</script>
+</body>
+</html>
