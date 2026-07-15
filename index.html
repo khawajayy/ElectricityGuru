@@ -114,8 +114,12 @@
 
     <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <label style="margin:0">Tariff</label>
-      <input id="rate" type="number" step="any" inputmode="decimal" style="width:120px">
-      <span class="sub">PKR per unit — used for the bill estimates below</span>
+      <input id="rate" type="number" step="any" inputmode="decimal" style="width:110px">
+      <span class="sub">PKR/unit</span>
+      <span style="width:1px;height:22px;background:var(--line);margin:0 4px"></span>
+      <label style="margin:0">Billing day</label>
+      <input id="billday" type="number" min="1" max="31" step="1" inputmode="numeric" style="width:80px">
+      <span class="sub">day of month your cycle starts</span>
     </div>
 
     <div class="grid cards" id="stats" style="margin-bottom:16px"></div>
@@ -315,7 +319,20 @@ async function delAppliance(id){
 const fmt = n => (Math.round(n*100)/100).toLocaleString(undefined,{maximumFractionDigits:2});
 const getRate=()=>{ const r=parseFloat(localStorage.getItem('eguru.rate')); return isNaN(r)?50:r; };
 const setRate=r=>localStorage.setItem('eguru.rate',r);
+const getBillDay=()=>{ const d=parseInt(localStorage.getItem('eguru.billday')); return (d>=1&&d<=31)?d:1; };
+const setBillDay=d=>localStorage.setItem('eguru.billday',d);
 const money = n => 'Rs '+Math.round(n).toLocaleString();
+// Start (inclusive) and end (exclusive) of the billing cycle containing `now`,
+// given the day-of-month the cycle starts on. Clamps to each month's length.
+function cycleBounds(now, day){
+  const dim=(y,m)=>new Date(y,m+1,0).getDate();
+  let y=now.getFullYear(), m=now.getMonth();
+  let start=new Date(y,m,Math.min(day,dim(y,m)));
+  if(now<start){ m-=1; if(m<0){m=11;y-=1;} start=new Date(y,m,Math.min(day,dim(y,m))); }
+  let ey=start.getFullYear(), em=start.getMonth()+1; if(em>11){em=0;ey+=1;}
+  const end=new Date(ey,em,Math.min(day,dim(ey,em)));
+  return {start,end};
+}
 const localDatetimeValue = d => {
   const p = x => String(x).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -358,21 +375,24 @@ function renderStats(){
       <div class="sub2">Add at least 2 readings to see usage.</div></div>`; return;
   }
   const daily=dailyUsage(intervals);
-  const now=new Date(); const monthStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
-  const monthUsed=daily.filter(d=>{const[y,m,dd]=d.day.split('-');return new Date(y,m-1,dd)>=monthStart;}).reduce((s,d)=>s+d.used,0);
+  const now=new Date();
+  const {start:cStart,end:cEnd}=cycleBounds(now,getBillDay());
+  const cycleUsed=daily.filter(d=>{const[y,m,dd]=d.day.split('-');return new Date(y,m-1,dd)>=cStart;}).reduce((s,d)=>s+d.used,0);
+  const daysInCycle=(cEnd-cStart)/86400000;
+  const daysElapsed=Math.max((now-cStart)/86400000,0.5);
+  const projected=(cycleUsed/daysElapsed)*daysInCycle; // at this cycle's pace
   const totalUsed=intervals.filter(i=>i.used>=0).reduce((s,i)=>s+i.used,0);
   const totalMs=r[r.length-1].t-r[0].t;
   const perDay=totalMs>0?totalUsed/(totalMs/86400000):0;
-  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  const projected=perDay*daysInMonth;
   const peak=daily.slice().sort((a,b)=>b.used-a.used)[0];
   const last=r[r.length-1];
   const rate=getRate();
+  const dfmt=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
   el.innerHTML=[
-    ['This month',fmt(monthUsed)+' kWh','since '+new Date(monthStart).toLocaleDateString(undefined,{month:'short',day:'numeric'})],
-    ['Bill so far',money(monthUsed*rate),fmt(monthUsed)+' units × '+fmt(rate)],
-    ['Projected month',fmt(projected)+' kWh','at current pace'],
-    ['Projected bill',money(projected*rate),'estimated month-end'],
+    ['This cycle',fmt(cycleUsed)+' kWh','since '+dfmt(cStart)],
+    ['Bill so far',money(cycleUsed*rate),fmt(cycleUsed)+' units × '+fmt(rate)],
+    ['Projected cycle',fmt(projected)+' kWh','by '+dfmt(cEnd)],
+    ['Projected bill',money(projected*rate),'estimated for this cycle'],
     ['Avg per day',fmt(perDay)+' kWh','across '+fmt(totalMs/86400000)+' days'],
     ['Peak day',peak?fmt(peak.used)+' kWh':'—',peak?dayLabel(peak.day):''],
     ['Last reading',fmt(last.v),new Date(last.t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})],
@@ -503,6 +523,11 @@ $('#rate').value=getRate();
 $('#rate').addEventListener('input',()=>{
   const v=parseFloat($('#rate').value); if(!isNaN(v)) setRate(v);
   renderStats(); renderAppliances();
+});
+$('#billday').value=getBillDay();
+$('#billday').addEventListener('input',()=>{
+  let v=parseInt($('#billday').value);
+  if(v>=1&&v<=31){ setBillDay(v); renderStats(); }
 });
 
 $('#r-time').value=localDatetimeValue(new Date());
