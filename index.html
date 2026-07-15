@@ -190,10 +190,14 @@
         <div id="auth-box" style="margin-top:18px;display:none">
           <h2>Sign in</h2>
           <div class="row">
-            <div style="flex:1"><label>Your email</label><input id="auth-email" type="email" placeholder="you@example.com"></div>
-            <div style="flex:none;display:flex;align-items:flex-end"><button id="auth-send">Email me a login link</button></div>
+            <div><label>Email</label><input id="auth-email" type="email" placeholder="you@example.com" autocomplete="username"></div>
+            <div><label>Password</label><input id="auth-pass" type="password" placeholder="your password" autocomplete="current-password"></div>
           </div>
-          <div class="hint">We'll email you a one-time link. Click it on any device to sign in. No password needed.</div>
+          <div class="row" style="margin-top:10px">
+            <button id="auth-signin">Sign in</button>
+            <button class="ghost" id="auth-signup">Create account</button>
+          </div>
+          <div class="hint">First time? Enter an email and a password, then click <b>Create account</b>. After that, use the same details to <b>Sign in</b> on any device. No login emails involved.</div>
           <div id="auth-status"></div>
         </div>
       </div>
@@ -204,9 +208,8 @@
           <li>Create a free account at <b>supabase.com</b> → New project (any name, pick a region near you, set a database password you keep).</li>
           <li>In the project: open <b>SQL Editor</b>, paste the script below, click <b>Run</b>. This creates your tables and locks them to your account.</li>
           <li>Open <b>Project Settings → API</b>. Copy the <b>Project URL</b> and the <b>anon public</b> key into the boxes on the left, then <b>Save connection</b>.</li>
-          <li>Open <b>Authentication → URL Configuration</b>. Set <b>Site URL</b> and add a <b>Redirect URL</b> both to your app address:
-            <br><code id="app-url"></code></li>
-          <li>Back here, enter your email and click the login link we send. Done, your data now syncs everywhere.</li>
+          <li>To sign in instantly with no confirmation email: open <b>Authentication → Sign In / Providers → Email</b> and turn <b>Confirm email</b> OFF. (Optional but recommended.)</li>
+          <li>Back here, enter an email + password and click <b>Create account</b>. Use the same details to sign in on your phone. Done, your data syncs everywhere.</li>
         </ol>
         <details style="margin-top:8px">
           <summary style="cursor:pointer;color:var(--accent)">Show SQL setup script</summary>
@@ -545,14 +548,26 @@ $('#cfg-clear').onclick=async()=>{
   await initClient(); await onAuthChanged();
   $('#cfg-status').innerHTML='<div class="notice ok">Disconnected. Using local storage on this device only.</div>';
 };
-$('#auth-send').onclick=async()=>{
+function authInputs(){
+  return {email:$('#auth-email').value.trim(), password:$('#auth-pass').value};
+}
+$('#auth-signin').onclick=async()=>{
   if(!sb){$('#auth-status').innerHTML='<div class="notice err">Save your connection first.</div>';return;}
-  const email=$('#auth-email').value.trim();
-  if(!email){$('#auth-status').innerHTML='<div class="notice err">Enter your email.</div>';return;}
-  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:appUrl()}});
-  $('#auth-status').innerHTML = error
-    ? `<div class="notice err">${error.message}</div>`
-    : '<div class="notice ok">Check your email and click the login link. You can open it on this device or your phone.</div>';
+  const {email,password}=authInputs();
+  if(!email||!password){$('#auth-status').innerHTML='<div class="notice err">Enter your email and password.</div>';return;}
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){$('#auth-status').innerHTML=`<div class="notice err">${error.message}</div>`;}
+  else{$('#auth-pass').value='';$('#auth-status').innerHTML='<div class="notice ok">Signed in.</div>';}
+};
+$('#auth-signup').onclick=async()=>{
+  if(!sb){$('#auth-status').innerHTML='<div class="notice err">Save your connection first.</div>';return;}
+  const {email,password}=authInputs();
+  if(!email||!password){$('#auth-status').innerHTML='<div class="notice err">Enter an email and a password to create your account.</div>';return;}
+  if(password.length<6){$('#auth-status').innerHTML='<div class="notice err">Use a password of at least 6 characters.</div>';return;}
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error){$('#auth-status').innerHTML=`<div class="notice err">${error.message}</div>`;return;}
+  if(data.session){ $('#auth-pass').value=''; $('#auth-status').innerHTML='<div class="notice ok">Account created and signed in.</div>'; }
+  else{ $('#auth-status').innerHTML='<div class="notice ok">Account created. If email confirmation is on in Supabase, confirm via the email, then Sign in. To skip that, turn off "Confirm email" in Supabase (see setup step 4).</div>'; }
 };
 $('#copy-sql').onclick=()=>{ navigator.clipboard.writeText($('#sql-block').textContent).then(()=>{$('#copy-sql').textContent='Copied!';setTimeout(()=>$('#copy-sql').textContent='Copy SQL',1500);}); };
 
@@ -560,7 +575,6 @@ window.addEventListener('resize',()=>{drawBar();drawLine();});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',refresh);
 
 // ---------- boot ----------
-$('#app-url').textContent=appUrl();
 await initClient();
 await onAuthChanged();
 </script>
