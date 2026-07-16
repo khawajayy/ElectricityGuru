@@ -181,24 +181,9 @@
   <section id="tab-settings" style="display:none">
     <div class="grid two">
       <div class="card">
-        <h2>Cloud sync (Supabase)</h2>
-        <p class="sub" style="margin-top:0">Connect a free Supabase project so your PC and phone share the same data. Your keys are stored only in this browser.</p>
-        <div style="margin-bottom:10px">
-          <label>Supabase Project URL</label>
-          <input id="cfg-url" placeholder="https://xxxxxxxx.supabase.co">
-        </div>
-        <div style="margin-bottom:10px">
-          <label>Supabase anon public key</label>
-          <input id="cfg-key" placeholder="eyJhbGciOi...">
-        </div>
-        <div class="row">
-          <button id="cfg-save">Save connection</button>
-          <button class="ghost" id="cfg-clear">Disconnect</button>
-        </div>
-        <div id="cfg-status"></div>
-
-        <div id="auth-box" style="margin-top:18px;display:none">
-          <h2>Sign in</h2>
+        <h2>Your account</h2>
+        <p class="sub" style="margin-top:0">Sign in to sync your readings across every device. Just email and password, no setup needed.</p>
+        <div id="auth-box">
           <div class="row">
             <div><label>Email</label><input id="auth-email" type="email" placeholder="you@example.com" autocomplete="username"></div>
             <div><label>Password</label><input id="auth-pass" type="password" placeholder="your password" autocomplete="current-password"></div>
@@ -207,20 +192,37 @@
             <button id="auth-signin">Sign in</button>
             <button class="ghost" id="auth-signup">Create account</button>
           </div>
-          <div class="hint">First time? Enter an email and a password, then click <b>Create account</b>. After that, use the same details to <b>Sign in</b> on any device. No login emails involved.</div>
+          <div class="hint">First time on any device? Enter an email and a password and click <b>Create account</b>. After that, use the same details to <b>Sign in</b> anywhere.</div>
           <div id="auth-status"></div>
         </div>
+        <div id="no-backend" class="notice err" style="display:none">No database is configured yet. Open <b>Advanced</b> and connect a Supabase project, or the app runs in local-only mode on this device.</div>
       </div>
 
       <div class="card">
-        <h2>First-time setup</h2>
-        <ol class="steps">
-          <li>Create a free account at <b>supabase.com</b> → New project (any name, pick a region near you, set a database password you keep).</li>
-          <li>In the project: open <b>SQL Editor</b>, paste the script below, click <b>Run</b>. This creates your tables and locks them to your account.</li>
-          <li>Open <b>Project Settings → API</b>. Copy the <b>Project URL</b> and the <b>anon public</b> key into the boxes on the left, then <b>Save connection</b>.</li>
-          <li>To sign in instantly with no confirmation email: open <b>Authentication → Sign In / Providers → Email</b> and turn <b>Confirm email</b> OFF. (Optional but recommended.)</li>
-          <li>Back here, enter an email + password and click <b>Create account</b>. Use the same details to sign in on your phone. Done, your data syncs everywhere.</li>
-        </ol>
+        <h2>Advanced</h2>
+        <p class="sub" style="margin-top:0">The app comes connected to a built-in database, so you don't normally need anything here. If you'd rather use your own free Supabase project, connect it below.</p>
+        <details>
+          <summary style="cursor:pointer;color:var(--accent)">Connect my own Supabase project</summary>
+          <div style="margin:12px 0 10px">
+            <label>Supabase Project URL</label>
+            <input id="cfg-url" placeholder="https://xxxxxxxx.supabase.co">
+          </div>
+          <div style="margin-bottom:10px">
+            <label>Supabase anon public key</label>
+            <input id="cfg-key" placeholder="eyJhbGciOi...">
+          </div>
+          <div class="row">
+            <button id="cfg-save">Save connection</button>
+            <button class="ghost" id="cfg-clear">Reset to default</button>
+          </div>
+          <div id="cfg-status"></div>
+          <ol class="steps" style="margin-top:14px">
+            <li>Create a free account at <b>supabase.com</b> → New project (pick a region near you, set a database password you keep).</li>
+            <li>Open <b>SQL Editor</b>, paste the script below, click <b>Run</b>. This creates your tables and locks them to your account.</li>
+            <li>Open <b>Project Settings → API</b>. Copy the <b>Project URL</b> and <b>anon public</b> key into the boxes above, then <b>Save connection</b>.</li>
+            <li>Open <b>Authentication → Sign In / Providers → Email</b> and turn <b>Confirm email</b> OFF so sign-up is instant.</li>
+          </ol>
+        </details>
         <details style="margin-top:8px">
           <summary style="cursor:pointer;color:var(--accent)">Show SQL setup script</summary>
 <pre id="sql-block">create table readings (
@@ -258,9 +260,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const $ = s => document.querySelector(s);
 
 // ---------- config / clients ----------
+// Built-in Supabase project so every device is connected out of the box and
+// users only need to sign in. The anon key is safe to publish (row-level
+// security limits each account to its own rows). Leave blank to disable the
+// built-in project and require users to connect their own under Advanced.
+const DEFAULT_URL='https://txkwazyhdedcayglmwhi.supabase.co';
+const DEFAULT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4a3dhenloZGVkY2F5Z2xtd2hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU1NjIsImV4cCI6MjA5OTY5MTU2Mn0.xenAZcaOJ5I2ugzyduVIOjnbYqh_c1w6t9xILsA4LCc';
 const CFG_KEY='eguru.config';
-const getConfig=()=>{ try{return JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){return {}} };
+const getConfig=()=>{
+  let c={}; try{ c=JSON.parse(localStorage.getItem(CFG_KEY))||{}; }catch(e){}
+  return { url:c.url||DEFAULT_URL, key:c.key||DEFAULT_KEY };
+};
 const setConfig=c=>localStorage.setItem(CFG_KEY,JSON.stringify(c));
+const usingDefault=()=>{ let c={}; try{c=JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){} return !(c.url&&c.key); };
 const appUrl=()=> location.origin==='null'? location.href.split('#')[0].split('?')[0]
                                           : location.origin+location.pathname;
 
@@ -483,18 +495,22 @@ function renderAuthbar(){
   else { el.innerHTML='<span class="pill off">Connected, not signed in</span><span class="sub">Sign in from Settings to sync.</span>'; }
 }
 async function initClient(){
+  // Prefill Advanced fields only with the user's own saved config, never the built-in default key.
+  let saved={}; try{ saved=JSON.parse(localStorage.getItem(CFG_KEY))||{}; }catch(e){}
+  $('#cfg-url').value=saved.url||''; $('#cfg-key').value=saved.key||'';
   const cfg=getConfig();
-  $('#cfg-url').value=cfg.url||''; $('#cfg-key').value=cfg.key||'';
   sb=null; user=null;
-  if(cfg.url&&cfg.key){
+  const haveBackend=!!(cfg.url&&cfg.key);
+  $('#auth-box').style.display = haveBackend?'':'none';
+  $('#no-backend').style.display = haveBackend?'none':'';
+  if(haveBackend){
     try{
       sb=createClient(cfg.url,cfg.key);
       const {data:{session}}=await sb.auth.getSession();
       user=session?.user||null;
       sb.auth.onAuthStateChange(async(_e,s)=>{ user=s?.user||null; renderAuthbar(); await onAuthChanged(); });
-      $('#auth-box').style.display='';
     }catch(e){ $('#cfg-status').innerHTML=`<div class="notice err">Could not connect: ${e.message}</div>`; }
-  } else { $('#auth-box').style.display='none'; }
+  }
   renderAuthbar();
 }
 let migrated=false;
@@ -584,12 +600,12 @@ $('#cfg-save').onclick=async()=>{
   if(!url||!key){$('#cfg-status').innerHTML='<div class="notice err">Enter both the URL and the anon key.</div>';return;}
   setConfig({url,key}); migrated=false;
   await initClient(); await onAuthChanged();
-  $('#cfg-status').innerHTML='<div class="notice ok">Saved. Now sign in with your email below.</div>';
+  $('#cfg-status').innerHTML='<div class="notice ok">Saved. Now sign in with your email above.</div>';
 };
 $('#cfg-clear').onclick=async()=>{
   localStorage.removeItem(CFG_KEY); migrated=false;
   await initClient(); await onAuthChanged();
-  $('#cfg-status').innerHTML='<div class="notice ok">Disconnected. Using local storage on this device only.</div>';
+  $('#cfg-status').innerHTML='<div class="notice ok">Reset to the built-in database.</div>';
 };
 function authInputs(){
   return {email:$('#auth-email').value.trim(), password:$('#auth-pass').value};
